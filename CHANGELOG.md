@@ -3,6 +3,7 @@
 - On X11, the `Moved` event is no longer sent when the window is resized without changing position.
 - `MouseCursor` and `CursorState` now implement `Default`.
 - `WindowBuilder::with_resizable` implemented for Windows.
+- On X11, exiting fullscreen no longer leaves the window in the monitor's top left corner.
 
 # Version 0.15.0 (2018-05-22)
 

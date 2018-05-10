@@ -1,20 +1,25 @@
 use std::slice;
 
 use super::*;
-use super::ffi::{
-    RROutput,
-    XRRCrtcInfo,
-    XRRMonitorInfo,
-    XRRScreenResources,
-};
+
+pub fn calc_dpi_factor(
+    (width_px, height_px): (u32, u32),
+    (width_mm, height_mm): (u64, u64),
+) -> f64 {
+    let ppmm = (
+        (width_px as f64 * height_px as f64) / (width_mm as f64 * height_mm as f64)
+    ).sqrt();
+    // Quantize 1/12 step size
+    ((ppmm * (12.0 * 25.4 / 96.0)).round() / 12.0).max(1.0)
+}
 
 pub enum MonitorRepr {
-    Monitor(*mut XRRMonitorInfo),
-    Crtc(*mut XRRCrtcInfo),
+    Monitor(*mut ffi::XRRMonitorInfo),
+    Crtc(*mut ffi::XRRCrtcInfo),
 }
 
 impl MonitorRepr {
-    pub unsafe fn get_output(&self) -> RROutput {
+    pub unsafe fn get_output(&self) -> ffi::RROutput {
         match *self {
             // Same member names, but different locations within the struct...
             MonitorRepr::Monitor(monitor) => *((*monitor).outputs.offset(0)),
@@ -37,31 +42,20 @@ impl MonitorRepr {
     }
 }
 
-impl From<*mut XRRMonitorInfo> for MonitorRepr {
-    fn from(monitor: *mut XRRMonitorInfo) -> Self {
+impl From<*mut ffi::XRRMonitorInfo> for MonitorRepr {
+    fn from(monitor: *mut ffi::XRRMonitorInfo) -> Self {
         MonitorRepr::Monitor(monitor)
     }
 }
 
-impl From<*mut XRRCrtcInfo> for MonitorRepr {
-    fn from(crtc: *mut XRRCrtcInfo) -> Self {
+impl From<*mut ffi::XRRCrtcInfo> for MonitorRepr {
+    fn from(crtc: *mut ffi::XRRCrtcInfo) -> Self {
         MonitorRepr::Crtc(crtc)
     }
 }
 
-pub fn calc_dpi_factor(
-    (width_px, height_px): (u32, u32),
-    (width_mm, height_mm): (u64, u64),
-) -> f64 {
-    let ppmm = (
-        (width_px as f64 * height_px as f64) / (width_mm as f64 * height_mm as f64)
-    ).sqrt();
-    // Quantize 1/12 step size
-    ((ppmm * (12.0 * 25.4 / 96.0)).round() / 12.0).max(1.0)
-}
-
 impl XConnection {
-    pub unsafe fn get_output_info(&self, resources: *mut XRRScreenResources, repr: &MonitorRepr) -> (String, f32) {
+    pub unsafe fn get_output_info(&self, resources: *mut ffi::XRRScreenResources, repr: &MonitorRepr) -> (String, f64) {
         let output_info = (self.xrandr.XRRGetOutputInfo)(
             self.display,
             resources,
@@ -75,7 +69,7 @@ impl XConnection {
         let hidpi_factor = calc_dpi_factor(
             repr.get_dimensions(),
             ((*output_info).mm_width as u64, (*output_info).mm_height as u64),
-        ) as f32;
+        );
         (self.xrandr.XRRFreeOutputInfo)(output_info);
         (name, hidpi_factor)
     }
