@@ -5,7 +5,7 @@ fn main() {
 
     let _window = winit::WindowBuilder::new()
         .with_title("A non-resizable window!")
-        .with_dimensions(200, 200)
+        .with_dimensions((200, 200).into())
         .with_resizable(false)
         .build(&events_loop)
         .unwrap();
